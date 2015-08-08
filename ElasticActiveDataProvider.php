@@ -99,8 +99,9 @@ class ElasticActiveDataProvider extends CActiveDataProvider
     protected function fetchData()
     {
         $pkAlias = "{$this->model->tableAlias}.{$this->model->tableSchema->primaryKey}";
-        $implodedKeys = implode(',',$this->fetchKeys());
-        return $this->model->findAll([
+        $keys = $this->fetchKeys();
+        $implodedKeys = implode(',', $keys);
+        return empty($keys) ? [] : $this->model->findAll([
             'condition' => "{$pkAlias} in ($implodedKeys)",
             'order' => "field({$pkAlias},{$implodedKeys})",
         ]);

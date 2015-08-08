@@ -12,10 +12,10 @@
  */
 class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 {
-    public $_elastic_index = null;
-    public $_elastic_type = null;
-    public $_elastic_raw_cols = ['caption', 'slug', 'label'];
-    public $_elastic_relations = [];
+    public $elastic_index;
+    public $elastic_type;
+    public $elastic_raw_cols;
+    public $elastic_relations = [];
     public $_elastic_documents_queue = [];
     public $_elastic_bulk_size = 1000;
 
@@ -24,8 +24,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticIndexName()
     {
-        $this->_elastic_index===null && $this->_elastic_index = $this->_elastic_index ?: preg_replace('#^.*;.*?name=(\w+).*$#', '$1', Yii::app()->db->connectionString);
-        return $this->_elastic_index;
+        return $this->elastic_index ?: preg_replace('#^.*;.*?name=(\w+).*$#', '$1', Yii::app()->db->connectionString);
     }
 
     /**
@@ -33,7 +32,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticTypeName()
     {
-        return !empty($this->owner->_elastic_type) ? $this->owner->_elastic_type : $this->owner->tableName();
+        return $this->elastic_type ?: $this->owner->tableName();
     }
 
     /**
@@ -41,7 +40,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticRawCols()
     {
-        return !empty($this->owner->_elastic_raw_cols) ? $this->owner->_elastic_raw_cols : $this->_elastic_raw_cols;
+        return $this->elastic_raw_cols ?: ['caption', 'slug', 'label', 'name'];
     }
 
     /**
@@ -49,7 +48,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticRelations()
     {
-        return !empty($this->owner->_elastic_relations) ? $this->owner->_elastic_relations : $this->_elastic_relations;
+        return $this->elastic_relations ?: [];
     }
 
     /**
@@ -69,17 +68,25 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function elasticSearch($query=[], $dataProviderOptions=[])
     {
+        $this->owner->unsetAttributes();
+        $filters = !empty($_REQUEST[get_class($this->owner)]) ? $_REQUEST[get_class($this->owner)] : [];
         $auto = [];
         $colSchema = $this->owner->tableSchema->columns;
-        foreach ($this->owner->safeAttributeNames as $col) {
-            if (!$this->owner->hasAttribute($col))
+        foreach ($filters as $col=>$val) {
+            if (!$val)
                 continue;
-
-            $desc = $colSchema[$col];//integer, boolean, double, string
-            $val = $this->owner->{$col};
-            if ($val!==null) {
-                $colType = $desc->type;
-                $temp = ElasticQueryHelper::compare($col, $val, $colType, true);
+            if (in_array($col, $this->owner->safeAttributeNames)) {
+                $desc = $colSchema[$col];//integer, boolean, double, string
+                $val = $this->owner->{$col};
+                if ($val!==null) {
+                    $colType = $desc->type;
+                    $temp = ElasticQueryHelper::compare($col, $val, $colType, true);
+                    if ($temp) {
+                        $auto[] = $temp;
+                    }
+                }
+            } else if (strchr($col, '.')!==false) {
+                $temp = ElasticQueryHelper::nestedCompare($col, $val, 'string', false);
                 if ($temp) {
                     $auto[] = $temp;
                 }
@@ -120,11 +127,26 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     }
 
     /**
+     * Create a text field you can use as a filter for searches on relations' fields
+     *
+     * @param $attribute
+     * @return string
+     */
+    public function nestedFilterInput($attribute)
+    {
+        $class = get_class($this->owner);
+        $name = "{$class}[{$attribute}]";
+        $val = empty($_REQUEST[$class][$attribute]) ? null : $_REQUEST[$class][$attribute];
+        $ret = CHtml::textField($name, $val);
+        return $ret;
+    }
+
+    /**
      * @return \Elastica\Client
      */
     public function getElasticDbConnection()
     {
-        return UElastica::client();
+        return Yii::app()->elastica->getClient();
     }
 
     /**
@@ -266,6 +288,20 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             ->send();
     }
 
+    public function elasticRelationsToArray($relations)
+    {
+        !is_array($relations) && $relations = [$relations];
+
+        $ret = [];
+        foreach ($relations as $relation) {
+            $matches = [];
+            preg_match('#^([^.]+)\.?(.*)#', $relation, $matches);
+            $ret[$matches[1]] = !empty($ret[$matches[1]]) ? $ret[$matches[1]] : [];
+            $ret[$matches[1]] = !empty($matches[2]) ? CMap::mergeArray($ret[$matches[1]], $this->elasticRelationsToArray($matches[2])) : [];
+        }
+        return $ret;
+    }
+
     /**
      * @param CActiveRecord $m
      * @param array $nestedRelations
@@ -274,7 +310,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public function elasticProperties($m=null, $nestedRelations=null)
     {
         $m===null && $m = $this->owner;
-        $nestedRelations===null && $nestedRelations = !empty($this->elasticRelations) ? $this->elasticRelations : [];
+        $nestedRelations===null && $nestedRelations = !empty($this->elasticRelations) ? $this->elasticRelationsToArray($this->elasticRelations) : [];
 
         $properties = [];
         foreach ($m->tableSchema->columns as $col => $desc) {//integer, boolean, double, string
@@ -299,9 +335,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         $properties['_boost'] = ['type'=>'float',  'null_value'=>1.0, 'include_in_all'=>false];
         if (!empty($nestedRelations)) {
             $mRelations = $m->relations();
-            foreach ($nestedRelations as $k=>$v) {
-                $relation = is_int($k) ? $v : $k;
-                $childNestedRelations = is_int($k) ? [] : $v;
+            foreach ($nestedRelations as $relation=>$childNestedRelations) {
                 if (empty($mRelations[$relation])) continue;
 
                 $relationModel = new $mRelations[$relation][1];
@@ -323,7 +357,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public function createElasticDocument($m=null, $nestedRelations=null)
     {
         $m===null && $m = $this->owner;
-        $nestedRelations===null && $nestedRelations = !empty($this->elasticRelations) ? $this->elasticRelations : [];
+        $nestedRelations===null && $nestedRelations = !empty($this->elasticRelations) ? $this->elasticRelationsToArray($this->elasticRelations) : [];
 
         $document = [];
         foreach ($m->tableSchema->columns as $col => $desc) {//integer, boolean, double, string
@@ -346,9 +380,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             }
         }
         if (!empty($nestedRelations)) {
-            foreach ($nestedRelations as $k=>$v) {
-                $relation = is_int($k) ? $v : $k;
-                $childNestedRelations = is_int($k) ? [] : $v;
+            foreach ($nestedRelations as $relation=>$childNestedRelations) {
                 $related = $m->{$relation};
 
                 if (empty($related)) {
