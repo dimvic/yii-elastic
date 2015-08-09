@@ -153,7 +153,7 @@ $this->widget('zii.widgets.grid.CGridView', [
 ```
 
 ## Usage
-Although the default functionality should be enough for more cases, you can handle more complex scenarios with ease.
+Although the default functionality should be enough for most cases, you can handle more complex scenarios with ease.
 
 You will probably want to have a look at:
 * ```ElasticActiveRecordBehavior->elasticSearch()``` if you want to run custom queries
@@ -161,7 +161,7 @@ You will probably want to have a look at:
 * ```ElasticQueryHelper```, where you can get an idea of how queries are build and how to supplement existing ones with something more fancy.
 Playing with the parameters of the methods should be enough for most cases, overloading is always an option.
 
-Also, ```ElasticActiveDataProvider->getResultSet()``` will give you access to the ```\Elastica\ResultSet``` for every query, in case you need more insights on the search you perform.
+Also, ```ElasticActiveDataProvider->getResultSet()``` will give you access to the ```\Elastica\ResultSet``` for every query, in case you need more insight on the search you perform.
 
 @todo add usage tips
 
@@ -170,6 +170,5 @@ Also, ```ElasticActiveDataProvider->getResultSet()``` will give you access to th
 @todo add methods overview
 
 ## Thanks
-Many thanks to
 * [ ruflin/Elastica ](https://github.com/ruflin/Elastica)
 * [ anasAsh/Yii-Elastica ](https://github.com/anasAsh/Yii-Elastica)
