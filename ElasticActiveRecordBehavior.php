@@ -257,14 +257,16 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             'analysis' => [
                 'analyzer' => [
                     'indexAnalyzer' => [
-                        'type' => 'custom',
-                        'tokenizer' => 'standard',
-                        'filter' => ['lowercase'],
+                        'type' => 'snowball',
+//                        'language' => 'English',
                     ],
                     'searchAnalyzer' => [
-                        'type' => 'custom',
-                        'tokenizer' => 'standard',
-                        'filter' => ['standard', 'lowercase'],
+                        'type' => 'snowball',
+//                        'language' => 'English',
+
+//                        'type' => 'custom',
+//                        'tokenizer' => 'standard',
+//                        'filter' => ['standard', 'lowercase'],
                     ]
                 ],
             ]
@@ -386,7 +388,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                 if (empty($related)) {
                     continue;
                 } else if ($related instanceof CActiveRecord) {
-                    $document[$relation] = $related->attributes;
+                    $document[$relation] = $this->createElasticDocument($related, $childNestedRelations);
                 } else if (is_array($related)) {
                     $document[$relation] = [];
                     foreach ($related as $r) {

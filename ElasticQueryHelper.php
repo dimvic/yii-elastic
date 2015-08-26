@@ -11,12 +11,13 @@ class ElasticQueryHelper
      * @param $value
      * @param string $type integer|boolean|double|string (anything else is handled as string)
      * @param bool|false $partialMatch
+     * @param float $boost
      * @return array|bool
      */
-    public static function compare($column, $value, $type='string', $partialMatch=false)
+    public static function compare($column, $value, $type='string', $partialMatch=false, $boost=null)
     {
         if (strchr($column, '.', false)!==false && !self::$_isNestedPrepared) {
-            return self::nestedCompare($column, $value, $type, $partialMatch);
+            return self::nestedCompare($column, $value, $type, $partialMatch, $boost);
         }
         self::$_isNestedPrepared = false;
 
@@ -39,14 +40,16 @@ class ElasticQueryHelper
         if($value==='')
             return false;
 
-        if($type=='string' && $partialMatch)
-            return self::buildPartialMatchCondition($column,$value,$type,in_array($op, ['<>', '!=']));
-        elseif($op==='')
+        if($type=='string' && $partialMatch) {
+            return self::buildPartialMatchCondition($column,$value,$type,in_array($op, ['<>', '!=']),$boost);
+        }
+
+        if($op==='')
             $op='=';
 
 //        self::addCondition($column.$op.'ycp'.'##','AND');
 //        self::$params['ycp'.'##']=$value;
-        return self::buildCondition($column, $value, $op);
+        return self::buildCondition($column, $value, $op, $boost);
     }
 
     /**
@@ -56,9 +59,10 @@ class ElasticQueryHelper
      * @param $value
      * @param string $type integer|boolean|double|string (anything else is handled as string)
      * @param bool|false $partialMatch
+     * @param float $boost
      * @return array|bool
      */
-    public static function nestedCompare($column, $value, $type='string', $partialMatch=false)
+    public static function nestedCompare($column, $value, $type='string', $partialMatch=false, $boost=null)
     {
         $matches = [];
         preg_match('#^(.*)\.(\w+)$#', $column, $matches);
@@ -69,7 +73,7 @@ class ElasticQueryHelper
                     'nested' => [
                         'path' => $matches[1],
                         'query' => [
-                            self::compare($column, $value, $type, $partialMatch)
+                            self::compare($column, $value, $type, $partialMatch, $boost)
                         ],
                     ],
                 ],
@@ -96,15 +100,27 @@ class ElasticQueryHelper
      * @param $val
      * @param $type
      * @param bool|false $not
+     * @param float $boost
      * @return array
      */
-    public static function buildPartialMatchCondition($col,$val,$type,$not=false)
+    public static function buildPartialMatchCondition($col,$val,$type,$not=false,$boost=null)
     {
         if ($type=='string') {
-            $query = ['wildcard' => [$col => "*{$val}*"]];
-            return $not ? ['bool' => ['must_not' => $query]] : $query;
+            $values = explode(' ', $val);
+            $query = [];
+            foreach ($values as $value) {
+                $query[] = [
+                    'wildcard' => [
+                        $col => $boost===null ? "*{$value}*" : [
+                            'value' => "*{$value}*",
+                            'boost'=>$boost,
+                        ]
+                    ]
+                ];
+            }
+            return $not ? ['bool' => ['must_not' => $query]] : ['bool' => ['must' => $query]];
         } else {
-            return self::buildCondition($col, $val, $not?'!=':'=');
+            return self::buildCondition($col, $val, $not?'!=':'=',$boost);
         }
     }
 
@@ -115,30 +131,44 @@ class ElasticQueryHelper
      * @param $col
      * @param $val
      * @param $op
+     * @param $boost
      * @return array
      */
-    public static function buildCondition($col, $val, $op)
+    public static function buildCondition($col, $val, $op, $boost=null)
     {
+        $query = [
+            'match' => [
+                $col => $boost===null ? $val : [
+                    'query' => $val,
+                    'boost' => $boost,
+                ],
+            ],
+        ];
         switch ($op) {
             case '\!=':
+            case '!=':
             case '<>':
-                $ret = ['bool' => ['must_not' => ['term' => [$col=>$val]]]];
+                $ret = ['bool' => ['must_not' => $query]];
                 break;
             case '<=':
                 $ret = ['range' => [$col =>['lte'=>$val]]];
+                $boost!==null && $ret['range'][$col]['boost'] = $boost;
                 break;
             case '>=':
                 $ret = ['range' => [$col =>['gte'=>$val]]];
+                $boost!==null && $ret['range'][$col]['boost'] = $boost;
                 break;
             case '<':
                 $ret = ['range' => [$col =>['lt'=>$val]]];
+                $boost!==null && $ret['range'][$col]['boost'] = $boost;
                 break;
             case '>':
                 $ret = ['range' => [$col =>['gt'=>$val]]];
+                $boost!==null && $ret['range'][$col]['boost'] = $boost;
                 break;
             case '=':
             default:
-            $ret = ['term' => [$col=>$val]];
+            $ret = $query;
         }
         return $ret;
     }

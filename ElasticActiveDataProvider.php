@@ -12,7 +12,7 @@ class ElasticActiveDataProvider extends CActiveDataProvider
     private $_countCriteria;
 
     /** @var \Elastica\ResultSet */
-    private $_resultSet = null;
+    private $_resultSet = [];
 
     /**
      * @param bool $count whether the count or results \Elastica\ResultSet should be returned
@@ -20,16 +20,17 @@ class ElasticActiveDataProvider extends CActiveDataProvider
      */
     public function getResultSet($count=false)
     {
-        if ($this->_resultSet===null) {
+        $cnt = (int)$count;
+        if (!isset($this->_resultSet[$cnt])) {
             $search = new Elastica\Search($this->model->getElasticDbConnection());
             $search
                 ->addIndex($this->model->getElasticIndex())
                 ->addType($this->model->getElasticType())
                 ->setQuery($this->getQuery($count))
             ;
-            $this->_resultSet = $search->search();
+            $this->_resultSet[$cnt] = $search->search();
         }
-        return $this->_resultSet;
+        return $this->_resultSet[$cnt];
     }
 
     /**
@@ -113,7 +114,7 @@ class ElasticActiveDataProvider extends CActiveDataProvider
     protected function fetchKeys()
     {
         $keys=[];
-        foreach ($this->getResultSet()->getResults() as $result) {
+        foreach ($this->getResultSet(false)->getResults() as $result) {
             $keys[] = $result->getData()['id'];
         }
         return $keys;
