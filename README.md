@@ -57,7 +57,7 @@ return [
 	...
 	'components' => [
 		'elastica' => [
-			'class' => 'extensions.elastic-yii.Elastica.lib.Elastica.Elastica',
+			'class' => 'extensions.elastic-yii.Elastica',
 			'host' => '127.0.0.1',
 			'port' => '9200',
 			'debug' => YII_DEBUG,
@@ -85,7 +85,7 @@ class Post extends CActiveRecord
                 'class'=>'ext.elastic-yii.ElasticActiveRecordBehavior',
                 'elastic_index'=>null,   //defaults to parsing db name from $this->getDbConnection()
                 'elastic_type'=>null,    //defaults to $model->tableName()
-                'elastic_raw_cols'=>null,//defaults to ['caption', 'slug', 'label', 'name']
+                'elastic_raw_cols'=>null,//the columns that will be used for aggregations, defaults to ['caption', 'slug', 'label', 'name']
                 'elastic_relations'=>[   //the relations you want indexed, can be nested to any depth
                     'author',
                     'author.group',
