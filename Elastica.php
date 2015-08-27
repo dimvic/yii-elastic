@@ -11,6 +11,12 @@ class Elastica extends CApplicationComponent
     public $servers;
     public $debug;
 
+    public function init()
+    {
+        // @todo find a miraculous way for this to run before redirects (implement queue in session?)
+        Yii::app()->attachEventHandler('onEndRequest', [$this, 'commit']);
+    }
+
     public function getClient() {
         if (!$this->_client) {
             if ($this->debug) {
@@ -29,8 +35,23 @@ class Elastica extends CApplicationComponent
         }
 
         return $this->_client;
-
     }
 
+    public $queue = [];//which models to commit
+
+    public function enQueue($class)
+    {
+        $this->queue[$class] = $class;
+    }
+
+    public function commit()
+    {
+        foreach ($this->queue as $class) {
+            /** @var UActiveRecord $m */
+            $m = new $class;
+            $m->addQueueToElastic(1);
+            $m->refreshElasticIndex();
+        }
+    }
 }
 

@@ -12,10 +12,13 @@
  */
 class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 {
+    public $elastic_update_after_save = true;
+
     public $elastic_index;
     public $elastic_type;
     public $elastic_raw_cols;
     public $elastic_relations = [];
+    public $_elastica;
     public $_elastic_documents_queue = [];
     public $_elastic_bulk_size = 1000;
 
@@ -142,11 +145,20 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     }
 
     /**
+     * @return Elastica
+     */
+    public function getElastica()
+    {
+        !$this->_elastica && $this->_elastica = Yii::app()->elastica;
+        return $this->_elastica;
+    }
+
+    /**
      * @return \Elastica\Client
      */
     public function getElasticDbConnection()
     {
-        return Yii::app()->elastica->getClient();
+        return $this->getElastica()->getClient();
     }
 
     /**
@@ -183,6 +195,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public function queueElasticDocument($m=null)
     {
         $m===null && $m = $this->owner;
+        $this->getElastica()->enQueue(get_class($this->owner));
         $this->_elastic_documents_queue[] = new \Elastica\Document($m->primaryKey, $this->createElasticDocument($m));
     }
 
@@ -193,7 +206,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     {
         $m===null && $m = $this->owner;
         $this->queueElasticDocument($m);
-        $this->addQueueToElastic(0);
+        $this->addQueueToElastic(1);
         $this->refreshElasticIndex();
     }
 
@@ -204,7 +217,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public function addQueueToElastic($required=null)
     {
         $required===null && $required = $this->_elastic_bulk_size;
-        if (count($this->_elastic_documents_queue)>$required) {
+        if (count($this->_elastic_documents_queue)>=$required) {
             $this->getElasticType()->addDocuments($this->_elastic_documents_queue);
             $this->_elastic_documents_queue = [];
         }
@@ -215,17 +228,23 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      * @param int $perPage
      * @param int|null $limit
      * @param array|CDbCriteria $criteria
+     * @param bool $resetType
+     * @param bool $resetIndex
      * @throws CDbException
      */
-    public function elasticRebuild($perPage=10000, $limit=null, $criteria=[])
+    public function elasticRebuild($perPage=10000, $limit=null, $criteria=[], $resetType=false, $resetIndex=false)
     {
-        $start = time();
         $index = $this->getElasticIndex();
-        $this->createElasticIndex($index);
+        if ($resetIndex) {
+            $this->createElasticIndex($index);
+        } else if ($resetType) {
+            $this->createElasticType(null, true);
+        }
 
         $i = 0;
+        $with = $this->buildRelationsWithCriteria();
         do {
-            $temp = new CDbCriteria(['offset'=>$i,'limit'=>$perPage]);
+            $temp = new CDbCriteria(['with'=>$with, 'together'=>true, 'offset'=>$i, 'limit'=>$perPage, 'order'=>'t.id']);
             $temp->mergeWith($criteria);
 
             /** @var CActiveRecord[] $models */
@@ -241,9 +260,24 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             $i += $perPage;
         } while (!empty($models) && (!$limit || ($limit && $i<$limit)));
 
-        $this->addQueueToElastic(0);
+        $this->addQueueToElastic(1);
         $this->refreshElasticIndex();
-        echo (time()-$start).'s';
+    }
+
+    public function buildRelationsWithCriteria($relations=null, $i=0)
+    {
+        $relations===null && $relations = $this->elasticRelationsToArray($this->elasticRelations);
+        $ret = [];
+
+        foreach ($relations as $k=>$v) {
+            $ret[$k] = ['alias'=>"rel{$i}"];
+            if (!empty($v)) {
+                $ret[$k] = CMap::mergeArray($ret[$k], ['with'=>$this->buildRelationsWithCriteria($v, $i*100)]);
+            }
+            $i++;
+        }
+
+        return $ret;
     }
 
     /**
@@ -275,9 +309,15 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 
     /**
      * @param \Elastica\Type $type
+     * @param bool $reset
      */
-    public function createElasticType($type)
+    public function createElasticType($type=null, $reset=false)
     {
+        if ($type && $type->exists() && $reset) {
+            $type->delete();
+        }
+        !$type && $type = $this->getElasticIndex()->getType($this->elasticTypeName);
+
         $mapping = new \Elastica\Type\Mapping();
 
         $mapping
@@ -406,7 +446,9 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function afterSave($event)
     {
-        $this->indexElasticDocument();
+        if ($this->elastic_update_after_save) {
+            $this->indexElasticDocument();
+        }
         parent::afterSave($event);
     }
 

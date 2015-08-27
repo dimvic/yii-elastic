@@ -13,6 +13,7 @@ class ElasticActiveDataProvider extends CActiveDataProvider
 
     /** @var \Elastica\ResultSet */
     private $_resultSet = [];
+    public $scores = [];
 
     /**
      * @param bool $count whether the count or results \Elastica\ResultSet should be returned
@@ -116,6 +117,7 @@ class ElasticActiveDataProvider extends CActiveDataProvider
         $keys=[];
         foreach ($this->getResultSet(false)->getResults() as $result) {
             $keys[] = $result->getData()['id'];
+            $this->scores[$result->getData()['id']] = $result->getScore();
         }
         return $keys;
     }
