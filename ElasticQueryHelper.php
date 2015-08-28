@@ -2,7 +2,8 @@
 
 class ElasticQueryHelper
 {
-    private static $_isNestedPrepared = false;
+    private static $_is_nested_prepared = false;
+    public static $raw_cols = ['raw'];
 
     /**
      * CDbCriteria ->compare() compatible condition builder
@@ -16,10 +17,11 @@ class ElasticQueryHelper
      */
     public static function compare($column, $value, $type='string', $partialMatch=false, $boost=null)
     {
-        if (strchr($column, '.', false)!==false && !self::$_isNestedPrepared) {
+        $col = preg_replace('/\.('.implode(self::$raw_cols, '|').')$/', '', $column);
+        if (strchr($col, '.', false)!==false && !self::$_is_nested_prepared) {
             return self::nestedCompare($column, $value, $type, $partialMatch, $boost);
         }
-        self::$_isNestedPrepared = false;
+        self::$_is_nested_prepared = false;
 
         $type = in_array($type, ['integer', 'boolean', 'double', 'string']) ? $type : 'string';
         $partialMatch = $type=='string' ? $partialMatch : false;
@@ -66,7 +68,12 @@ class ElasticQueryHelper
     {
         $matches = [];
         preg_match('#^(.*)\.(\w+)$#', $column, $matches);
-        self::$_isNestedPrepared = true;
+        $cnt = count($matches);
+        if (in_array($matches[$cnt-1], self::$raw_cols)) {
+            $matches[$cnt-2] = $matches[$cnt-2].$matches[$cnt-1];
+            unset($matches[$cnt-1]);
+        }
+        self::$_is_nested_prepared = true;
         return [
             'bool'=>[
                 'must'=>[
@@ -110,10 +117,25 @@ class ElasticQueryHelper
             $query = [];
             foreach ($values as $value) {
                 $query[] = [
-                    'wildcard' => [
-                        $col => $boost===null ? "*{$value}*" : [
-                            'value' => "*{$value}*",
-                            'boost'=>$boost,
+                    'bool'=>[
+                        'should'=>[
+                            [
+                                'match' => [
+                                    $col => $boost===null ? "{$value}" : [
+                                        'query' => "{$value}",
+                                        'boost'=>$boost,
+                                    ]
+                                ]
+                            ],
+                            [
+                                'wildcard' => [
+                                    $col => $boost===null ? "*{$value}*" : [
+                                        'value' => "*{$value}*",
+                                        'boost'=>$boost,
+                                    ]
+                                ]
+
+                            ]
                         ]
                     ]
                 ];

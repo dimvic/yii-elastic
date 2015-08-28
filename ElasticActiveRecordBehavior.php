@@ -292,10 +292,12 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                 'analyzer' => [
                     'indexAnalyzer' => [
                         'type' => 'snowball',
+                        'filter' => ['lowercase'],
 //                        'language' => 'English',
                     ],
                     'searchAnalyzer' => [
                         'type' => 'snowball',
+                        'filter' => ['lowercase'],
 //                        'language' => 'English',
 
 //                        'type' => 'custom',
