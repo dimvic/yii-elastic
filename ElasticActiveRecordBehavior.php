@@ -217,7 +217,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public function addQueueToElastic($required=null)
     {
         $required===null && $required = $this->_elastic_bulk_size;
-        if (count($this->_elastic_documents_queue)>=$required) {
+        if (count($this->_elastic_documents_queue) && count($this->_elastic_documents_queue)>=$required) {
             $this->getElasticType()->addDocuments($this->_elastic_documents_queue);
             $this->_elastic_documents_queue = [];
         }
