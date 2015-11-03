@@ -27,7 +27,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticIndexName()
     {
-        return $this->elastic_index ?: preg_replace('#^.*;.*?name=(\w+).*$#', '$1', Yii::app()->db->connectionString);
+        $indexName = $this->elastic_index ?: preg_replace('#^.*;.*?name=(\w+).*$#', '$1', Yii::app()->db->connectionString);
+        return function_exists('staging_mode') && staging_mode() ? "staging_{$indexName}" : $indexName;
     }
 
     /**
@@ -35,7 +36,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticTypeName()
     {
-        return $this->elastic_type ?: $this->owner->tableName();
+        $typeName = $this->elastic_type ?: $this->owner->tableName();
+        return function_exists('staging_mode') && staging_mode() ? "staging_{$typeName}" : $typeName;
     }
 
     /**
