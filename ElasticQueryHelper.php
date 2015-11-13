@@ -89,6 +89,74 @@ class ElasticQueryHelper
     }
 
     /**
+     * fuzzy condition builder
+     *
+     * @param $column
+     * @param $value
+     * @param float $boost
+     * @param integer $fuzziness
+     * @return array|bool
+     */
+    public static function fuzzy($column, $value, $boost=null, $fuzziness=5)
+    {
+        $col = preg_replace('/\.('.implode(self::$raw_cols, '|').')$/', '', $column);
+        if (strchr($col, '.', false)!==false && !self::$_is_nested_prepared) {
+            return self::nestedFuzzy($column, $value, $boost, $fuzziness);
+        }
+        self::$_is_nested_prepared = false;
+
+        if($value==='')
+            return false;
+
+        $query = [
+            'fuzzy' => [
+                $col => [
+                    'value' => $value,
+                    'fuzziness' => $fuzziness,
+                    'prefix_length' => 1,
+                    'max_expansions' => 100,
+                ],
+            ],
+        ];
+        $boost && $query['fuzzy'][$col]['boost'] = $boost;
+
+        return $query;
+    }
+
+    /**
+     * fuzzy condition builder for nested documents
+     *
+     * @param $column
+     * @param $value
+     * @param float $boost
+     * @param integer $fuzziness
+     * @return array|bool
+     */
+    public static function nestedFuzzy($column, $value, $boost=null, $fuzziness=5)
+    {
+        $matches = [];
+        preg_match('#^(.*)\.(\w+)$#', $column, $matches);
+        $cnt = count($matches);
+        if (in_array($matches[$cnt-1], self::$raw_cols)) {
+            $matches[$cnt-2] = $matches[$cnt-2].$matches[$cnt-1];
+            unset($matches[$cnt-1]);
+        }
+        self::$_is_nested_prepared = true;
+        return [
+            'bool'=>[
+                'must'=>[
+                    'nested' => [
+                        'path' => $matches[1],
+                        'query' => [
+                            self::fuzzy($column, $value, $boost, $fuzziness)
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
      * CDbCriteria->addInCondition() compatible condition builder
      *
      * @param $col

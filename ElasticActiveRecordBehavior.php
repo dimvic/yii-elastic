@@ -287,6 +287,11 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function createElasticIndex($index)
     {
+        if (method_exists($this->owner, 'createElasticIndex')) {
+            $this->owner->createElasticIndex($index);
+            return;
+        }
+
         $index->create([
             'number_of_shards' => 4,
             'number_of_replicas' => 1,
@@ -317,6 +322,11 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function createElasticType($type=null, $reset=false)
     {
+        if (method_exists($this->owner, 'createElasticType')) {
+            $this->owner->createElasticType($type, $reset);
+            return;
+        }
+
         if ($type && $type->exists() && $reset) {
             $type->delete();
         }
