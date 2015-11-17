@@ -81,10 +81,10 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             if (!$val)
                 continue;
             if (in_array($col, $this->owner->safeAttributeNames)) {
-                $desc = $colSchema[$col];//integer, boolean, double, string
                 $val = $this->owner->{$col};
                 if ($val!==null) {
-                    $colType = $desc->type;
+                    $desc = isset($colSchema[$col]) ? $colSchema[$col] : null;//integer, boolean, double, string
+                    $colType = $desc ? $desc->type : 'string';
                     $temp = ElasticQueryHelper::compare($col, $val, $colType, true);
                     if ($temp) {
                         $auto[] = $temp;
@@ -244,9 +244,10 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         }
 
         $i = 0;
+        $id = 0;
         $with = $this->buildRelationsWithCriteria();
         do {
-            $temp = new CDbCriteria(['with'=>$with, 'together'=>true, 'offset'=>$i, 'limit'=>$perPage, 'order'=>'t.id']);
+            $temp = new CDbCriteria(['with'=>$with, 'together'=>true, 'limit'=>$perPage, 'order'=>'t.id desc', 'condition'=>($id?"t.id<={$id}":'')]);
             $temp->mergeWith($criteria);
 
             /** @var CActiveRecord[] $models */
@@ -256,11 +257,11 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             foreach ($models as $model) {
                 $this->queueElasticDocument($model);
                 $this->addQueueToElastic();
+                $id = $model->id;
             }
             $transaction->commit();
-
-            $i += $perPage;
-        } while (!empty($models) && (!$limit || ($limit && $i<$limit)));
+            $i = $i + $perPage;
+        } while (count($models)>1 && (!$limit || ($limit && $i<$limit)));
 
         $this->addQueueToElastic(1);
         $this->refreshElasticIndex();
@@ -295,24 +296,24 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         $index->create([
             'number_of_shards' => 4,
             'number_of_replicas' => 1,
-            'analysis' => [
-                'analyzer' => [
-                    'indexAnalyzer' => [
-                        'type' => 'snowball',
-                        'filter' => ['lowercase'],
-//                        'language' => 'English',
-                    ],
-                    'searchAnalyzer' => [
-                        'type' => 'snowball',
-                        'filter' => ['lowercase'],
-//                        'language' => 'English',
-
-//                        'type' => 'custom',
-//                        'tokenizer' => 'standard',
-//                        'filter' => ['standard', 'lowercase'],
-                    ]
-                ],
-            ]
+//            'analysis' => [
+//                'analyzer' => [
+//                    'indexAnalyzer' => [
+//                        'type' => 'snowball',
+//                        'filter' => ['lowercase'],
+////                        'language' => 'English',
+//                    ],
+//                    'searchAnalyzer' => [
+//                        'type' => 'snowball',
+//                        'filter' => ['lowercase'],
+////                        'language' => 'English',
+//
+////                        'type' => 'custom',
+////                        'tokenizer' => 'standard',
+////                        'filter' => ['standard', 'lowercase'],
+//                    ]
+//                ],
+//            ]
         ], true);
     }
 
@@ -338,8 +339,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             ->setType($type)
             ->setProperties($this->elasticProperties())
             ->setParam('dynamic', 'strict')
-            ->setParam('index_analyzer', 'indexAnalyzer')
-            ->setParam('search_analyzer', 'searchAnalyzer')
+//            ->setParam('index_analyzer', 'indexAnalyzer')
+//            ->setParam('search_analyzer', 'searchAnalyzer')
             ->setParam('_boost', ['name' => '_boost', 'null_value' => 1.0])
             ->send();
     }
