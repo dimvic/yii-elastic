@@ -80,7 +80,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         foreach ($filters as $col=>$val) {
             if (!$val)
                 continue;
-            if (in_array($col, $this->owner->safeAttributeNames)) {
+            if (in_array($col, $this->owner->safeAttributeNames) && !property_exists($this->owner, $col)) {
                 $val = $this->owner->{$col};
                 if ($val!==null) {
                     $desc = isset($colSchema[$col]) ? $colSchema[$col] : null;//integer, boolean, double, string
@@ -97,6 +97,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                 }
             }
         }
+
         if (!empty($auto)) {
             $auto = [
                 'bool'=>[
