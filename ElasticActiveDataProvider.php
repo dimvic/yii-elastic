@@ -22,15 +22,13 @@ class ElasticActiveDataProvider extends CActiveDataProvider
     public function getResultSet($count=false)
     {
         $cnt = (int)$count;
-        if (!isset($this->_resultSet[$cnt])) {
-            $search = new Elastica\Search($this->model->getElasticDbConnection());
-            $search
-                ->addIndex($this->model->getElasticIndex())
-                ->addType($this->model->getElasticType())
-                ->setQuery($this->getQuery($count))
-            ;
-            $this->_resultSet[$cnt] = $search->search();
-        }
+        $search = new Elastica\Search($this->model->getElasticDbConnection());
+        $search
+            ->addIndex($this->model->getElasticIndex())
+            ->addType($this->model->getElasticType())
+            ->setQuery($this->getQuery($count))
+        ;
+        $this->_resultSet[$cnt] = $search->search();
         return $this->_resultSet[$cnt];
     }
 
