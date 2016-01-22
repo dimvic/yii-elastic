@@ -99,7 +99,16 @@ class ElasticQueryHelper
      */
     public static function fuzzy($column, $value, $boost=null, $fuzziness=5)
     {
-        $col = preg_replace('/\.('.implode(self::$raw_cols, '|').')$/', '', $column);
+        $rawRegEx = '/\.('.implode(self::$raw_cols, '|').')$/';
+        $raw = '';
+        $matches = [];
+        if (preg_match($rawRegEx, $column, $matches)) {
+            $col = preg_replace('/\.('.implode(self::$raw_cols, '|').')$/', '', $column);
+            $raw = $matches[0];
+        } else {
+            $col = $column;
+        }
+
         if (strchr($col, '.', false)!==false && !self::$_is_nested_prepared) {
             return self::nestedFuzzy($column, $value, $boost, $fuzziness);
         }
@@ -108,6 +117,7 @@ class ElasticQueryHelper
         if($value==='')
             return false;
 
+        $col = "{$col}{$raw}";
         $query = [
             'fuzzy' => [
                 $col => [
