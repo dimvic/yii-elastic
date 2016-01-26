@@ -13,6 +13,7 @@
 class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 {
     public $elastic_update_after_save = true;
+    public $elastic_find_criteria = [];
 
     public $elastic_index;
     public $elastic_type;

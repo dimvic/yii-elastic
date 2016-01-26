@@ -101,10 +101,12 @@ class ElasticActiveDataProvider extends CActiveDataProvider
         $pkAlias = "{$this->model->tableAlias}.{$this->model->tableSchema->primaryKey}";
         $keys = $this->fetchKeys();
         $implodedKeys = implode(',', $keys);
-        return empty($keys) ? [] : $this->model->findAll([
+        $criteria = new CDbCriteria([
             'condition' => "{$pkAlias} in ($implodedKeys)",
             'order' => "field({$pkAlias},{$implodedKeys})",
         ]);
+        !empty($this->model->elastic_find_criteria) && $criteria->mergeWith($this->model->elastic_find_criteria);
+        return empty($keys) ? [] : $this->model->findAll($criteria);
     }
 
     /**
