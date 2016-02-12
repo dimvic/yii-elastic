@@ -343,7 +343,6 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             ->setParam('dynamic', 'strict')
 //            ->setParam('index_analyzer', 'indexAnalyzer')
 //            ->setParam('search_analyzer', 'searchAnalyzer')
-            ->setParam('_boost', ['name' => '_boost', 'null_value' => 1.0])
             ->send();
     }
 
@@ -391,7 +390,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                     }
             }
         }
-        $properties['_boost'] = ['type'=>'float',  'null_value'=>1.0, 'include_in_all'=>false];
+
         if (!empty($nestedRelations)) {
             $mRelations = $m->relations();
             foreach ($nestedRelations as $relation=>$childNestedRelations) {
