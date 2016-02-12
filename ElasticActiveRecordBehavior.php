@@ -381,7 +381,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                     break;
                 default:
                     if ($colType=='string' && preg_match('#_at$#', $col)) {
-                        $properties[$col] = ['type'=>'date', 'null_value'=>0, 'include_in_all'=>true, 'format'=>'YYYY-MM-dd HH:mm:ss||YYYY-MM-dd'];
+                        $properties[$col] = ['type'=>'date', 'null_value'=>'', 'include_in_all'=>true, 'format'=>'YYYY-MM-dd HH:mm:ss||YYYY-MM-dd||epoch_second'];
                     } else {
                         $properties[$col] = ['type'=>$colType,  'null_value'=>'', 'include_in_all'=>true];
                     }
