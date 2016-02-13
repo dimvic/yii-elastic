@@ -195,25 +195,10 @@ class ElasticQueryHelper
             $query = [];
             foreach ($values as $value) {
                 $query[] = [
-                    'bool'=>[
-                        'should'=>[
-                            [
-                                'match' => [
-                                    $col => $boost===null ? "{$value}" : [
-                                        'query' => "{$value}",
-                                        'boost'=>$boost,
-                                    ]
-                                ]
-                            ],
-                            [
-                                'wildcard' => [
-                                    $col => $boost===null ? "*{$value}*" : [
-                                        'value' => "*{$value}*",
-                                        'boost'=>$boost,
-                                    ]
-                                ]
-
-                            ]
+                    'wildcard' => [
+                        $col => $boost===null ? "*{$value}*" : [
+                            'value' => "*{$value}*",
+                            'boost'=>$boost,
                         ]
                     ]
                 ];
