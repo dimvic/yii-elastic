@@ -132,7 +132,7 @@ class ElasticActiveDataProvider extends CActiveDataProvider
      */
     protected function calculateTotalItemCount()
     {
-        return $this->getResultSet(true)->getTotalHits();
+        return $this->getResultSet(true)->getTotalHits()>5000 ? 5000 : $this->getResultSet(true)->getTotalHits();
     }
 
     /**
