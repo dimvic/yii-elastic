@@ -40,6 +40,11 @@ class ElasticActiveDataProvider extends CActiveDataProvider
     {
         $criteria = $count ? $this->getCountCriteria() : $this->getCriteria();
         empty($criteria['query']) && $criteria['query'] = null;
+        $sort = $this->getSortCriteria();
+        if (!empty($criteria['order'])) {
+            $sort = $criteria['order'];
+            unset($criteria['order']);
+        }
         $query = new Elastica\Query($criteria);
         if (!$count) {
             if(($pagination=$this->getPagination())!==false) {
@@ -47,7 +52,7 @@ class ElasticActiveDataProvider extends CActiveDataProvider
                 $query->setFrom($pagination->getOffset());
                 $query->setSize($pagination->getLimit());
             }
-            $query->setSort(CMap::mergeArray(!empty($criteria['order']) ? $criteria['order'] : [], $this->getSortCriteria()));
+            $query->setSort($sort);
         }
         return $query;
     }
