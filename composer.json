@@ -1,0 +1,24 @@
+{
+    "name": "dimvic/elastic-yii",
+    "description": "Yii 1.1 elasticsearch tools",
+    "type": "yii-extension",
+    "keywords": ["Yii", " elasticsearch"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name":"Dimitris Vichos",
+            "email":"dimitris@unhooked.gr"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/dimvic/elastic-yii/issues",
+        "source": "https://github.com/dimvic/elastic-yii"
+    },
+    "require": {
+        "dimvic/composer-installers": "^0.1",
+        "php":"^5.4.0"
+    },
+    "suggest": {
+        "yiisoft/yii": "^1.1.17"
+    }
+}

@@ -2,7 +2,7 @@
 
 class ElasticQueryHelper
 {
-    private static $_is_nested_prepared = false;
+    private static $is_nested_prepared = false;
     public static $raw_cols = ['raw'];
 
     /**
@@ -15,39 +15,44 @@ class ElasticQueryHelper
      * @param float $boost
      * @return array|bool
      */
-    public static function compare($column, $value, $type='string', $partialMatch=false, $boost=null)
+    public static function compare($column, $value, $type = 'string', $partialMatch = false, $boost = null)
     {
-        $col = preg_replace('/\.('.implode(self::$raw_cols, '|').')$/', '', $column);
-        if (strchr($col, '.', false)!==false && !self::$_is_nested_prepared) {
+        $col = preg_replace('/\.(' . implode(self::$raw_cols, '|') . ')$/', '', $column);
+        if (strchr($col, '.', false) !== false && !self::$is_nested_prepared) {
             return self::nestedCompare($column, $value, $type, $partialMatch, $boost);
         }
-        self::$_is_nested_prepared = false;
+        self::$is_nested_prepared = false;
 
         $type = in_array($type, ['integer', 'boolean', 'double', 'string']) ? $type : 'string';
-        $partialMatch = $type=='string' ? $partialMatch : false;
+        $partialMatch = $type == 'string' ? $partialMatch : false;
 
-        if(is_array($value)) {
-            if($value===[])
+        if (is_array($value)) {
+            if ($value === []) {
                 return false;
-            return self::buildInCondition($column,$value);
-        } else
-            $value="{$value}";
-
-        if(preg_match('/^(?:\s*(\!=|<>|<=|>=|<|>|=))?(.*)$/',$value,$matches)) {
-            $value=$matches[2];
-            $op=$matches[1];
-        } else
-            $op='';
-
-        if($value==='')
-            return false;
-
-        if($type=='string' && $partialMatch) {
-            return self::buildPartialMatchCondition($column,$value,$type,in_array($op, ['<>', '!=']),$boost);
+            }
+            return self::buildInCondition($column, $value);
+        } else {
+            $value = "{$value}";
         }
 
-        if($op==='')
-            $op='=';
+        if (preg_match('/^(?:\s*(\!=|<>|<=|>=|<|>|=))?(.*)$/', $value, $matches)) {
+            $value = $matches[2];
+            $op = $matches[1];
+        } else {
+            $op = '';
+        }
+
+        if ($value === '') {
+            return false;
+        }
+
+        if ($type == 'string' && $partialMatch) {
+            return self::buildPartialMatchCondition($column, $value, $type, in_array($op, ['<>', '!=']), $boost);
+        }
+
+        if ($op === '') {
+            $op = '=';
+        }
 
 //        self::addCondition($column.$op.'ycp'.'##','AND');
 //        self::$params['ycp'.'##']=$value;
@@ -64,19 +69,19 @@ class ElasticQueryHelper
      * @param float $boost
      * @return array|bool
      */
-    public static function nestedCompare($column, $value, $type='string', $partialMatch=false, $boost=null)
+    public static function nestedCompare($column, $value, $type = 'string', $partialMatch = false, $boost = null)
     {
         $matches = [];
         preg_match('#^(.*)\.(\w+)$#', $column, $matches);
         $cnt = count($matches);
-        if (in_array($matches[$cnt-1], self::$raw_cols)) {
-            $matches[$cnt-2] = $matches[$cnt-2].$matches[$cnt-1];
-            unset($matches[$cnt-1]);
+        if (in_array($matches[$cnt - 1], self::$raw_cols)) {
+            $matches[$cnt - 2] = $matches[$cnt - 2] . $matches[$cnt - 1];
+            unset($matches[$cnt - 1]);
         }
-        self::$_is_nested_prepared = true;
+        self::$is_nested_prepared = true;
         return [
-            'bool'=>[
-                'must'=>[
+            'bool' => [
+                'must' => [
                     'nested' => [
                         'path' => $matches[1],
                         'query' => [
@@ -97,25 +102,26 @@ class ElasticQueryHelper
      * @param integer $fuzziness
      * @return array|bool
      */
-    public static function fuzzy($column, $value, $boost=null, $fuzziness=5)
+    public static function fuzzy($column, $value, $boost = null, $fuzziness = 5)
     {
-        $rawRegEx = '/\.('.implode(self::$raw_cols, '|').')$/';
+        $rawRegEx = '/\.(' . implode(self::$raw_cols, '|') . ')$/';
         $raw = '';
         $matches = [];
         if (preg_match($rawRegEx, $column, $matches)) {
-            $col = preg_replace('/\.('.implode(self::$raw_cols, '|').')$/', '', $column);
+            $col = preg_replace('/\.(' . implode(self::$raw_cols, '|') . ')$/', '', $column);
             $raw = $matches[0];
         } else {
             $col = $column;
         }
 
-        if (strchr($col, '.', false)!==false && !self::$_is_nested_prepared) {
+        if (strchr($col, '.', false) !== false && !self::$is_nested_prepared) {
             return self::nestedFuzzy($column, $value, $boost, $fuzziness);
         }
-        self::$_is_nested_prepared = false;
+        self::$is_nested_prepared = false;
 
-        if($value==='')
+        if ($value === '') {
             return false;
+        }
 
         $col = "{$col}{$raw}";
         $query = [
@@ -142,19 +148,19 @@ class ElasticQueryHelper
      * @param integer $fuzziness
      * @return array|bool
      */
-    public static function nestedFuzzy($column, $value, $boost=null, $fuzziness=5)
+    public static function nestedFuzzy($column, $value, $boost = null, $fuzziness = 5)
     {
         $matches = [];
         preg_match('#^(.*)\.(\w+)$#', $column, $matches);
         $cnt = count($matches);
-        if (in_array($matches[$cnt-1], self::$raw_cols)) {
-            $matches[$cnt-2] = $matches[$cnt-2].$matches[$cnt-1];
-            unset($matches[$cnt-1]);
+        if (in_array($matches[$cnt - 1], self::$raw_cols)) {
+            $matches[$cnt - 2] = $matches[$cnt - 2] . $matches[$cnt - 1];
+            unset($matches[$cnt - 1]);
         }
-        self::$_is_nested_prepared = true;
+        self::$is_nested_prepared = true;
         return [
-            'bool'=>[
-                'must'=>[
+            'bool' => [
+                'must' => [
                     'nested' => [
                         'path' => $matches[1],
                         'query' => [
@@ -173,7 +179,7 @@ class ElasticQueryHelper
      * @param $val
      * @return array
      */
-    public static function buildInCondition($col,$val)
+    public static function buildInCondition($col, $val)
     {
         return ['terms' => [$col => $val]];
     }
@@ -188,24 +194,24 @@ class ElasticQueryHelper
      * @param float $boost
      * @return array
      */
-    public static function buildPartialMatchCondition($col,$val,$type,$not=false,$boost=null)
+    public static function buildPartialMatchCondition($col, $val, $type, $not = false, $boost = null)
     {
-        if ($type=='string') {
+        if ($type == 'string') {
             $values = explode(' ', $val);
             $query = [];
             foreach ($values as $value) {
                 $query[] = [
                     'wildcard' => [
-                        $col => $boost===null ? "*{$value}*" : [
+                        $col => $boost === null ? "*{$value}*" : [
                             'value' => "*{$value}*",
-                            'boost'=>$boost,
+                            'boost' => $boost,
                         ]
                     ]
                 ];
             }
             return $not ? ['bool' => ['must_not' => $query]] : ['bool' => ['must' => $query]];
         } else {
-            return self::buildCondition($col, $val, $not?'!=':'=',$boost);
+            return self::buildCondition($col, $val, $not ? '!=' : '=', $boost);
         }
     }
 
@@ -219,11 +225,11 @@ class ElasticQueryHelper
      * @param $boost
      * @return array
      */
-    public static function buildCondition($col, $val, $op, $boost=null)
+    public static function buildCondition($col, $val, $op, $boost = null)
     {
         $query = [
             'match' => [
-                $col => $boost===null ? $val : [
+                $col => $boost === null ? $val : [
                     'query' => $val,
                     'boost' => $boost,
                 ],
@@ -236,24 +242,24 @@ class ElasticQueryHelper
                 $ret = ['bool' => ['must_not' => $query]];
                 break;
             case '<=':
-                $ret = ['range' => [$col =>['lte'=>$val]]];
-                $boost!==null && $ret['range'][$col]['boost'] = $boost;
+                $ret = ['range' => [$col => ['lte' => $val]]];
+                $boost !== null && $ret['range'][$col]['boost'] = $boost;
                 break;
             case '>=':
-                $ret = ['range' => [$col =>['gte'=>$val]]];
-                $boost!==null && $ret['range'][$col]['boost'] = $boost;
+                $ret = ['range' => [$col => ['gte' => $val]]];
+                $boost !== null && $ret['range'][$col]['boost'] = $boost;
                 break;
             case '<':
-                $ret = ['range' => [$col =>['lt'=>$val]]];
-                $boost!==null && $ret['range'][$col]['boost'] = $boost;
+                $ret = ['range' => [$col => ['lt' => $val]]];
+                $boost !== null && $ret['range'][$col]['boost'] = $boost;
                 break;
             case '>':
-                $ret = ['range' => [$col =>['gt'=>$val]]];
-                $boost!==null && $ret['range'][$col]['boost'] = $boost;
+                $ret = ['range' => [$col => ['gt' => $val]]];
+                $boost !== null && $ret['range'][$col]['boost'] = $boost;
                 break;
             case '=':
             default:
-            $ret = $query;
+                $ret = $query;
         }
         return $ret;
     }

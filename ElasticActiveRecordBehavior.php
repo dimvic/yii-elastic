@@ -19,16 +19,17 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public $elastic_type;
     public $elastic_raw_cols;
     public $elastic_relations = [];
-    public $_elastica;
-    public $_elastic_documents_queue = [];
-    public $_elastic_bulk_size = 1000;
+    public $elastica;
+    public $elastic_documents_queue = [];
+    public $elastic_bulk_size = 1000;
 
     /**
      * @return string
      */
     public function getElasticIndexName()
     {
-        $indexName = $this->elastic_index ?: preg_replace('#^.*;.*?name=(\w+).*$#', '$1', Yii::app()->db->connectionString);
+        $indexName = $this->elastic_index
+            ?: preg_replace('#^.*;.*?name=(\w+).*$#', '$1', Yii::app()->db->connectionString);
         return $indexName;
     }
 
@@ -72,18 +73,20 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      * ]
      * @return ElasticActiveDataProvider
      */
-    public function elasticSearch($query=[], $dataProviderOptions=[])
+    public function elasticSearch($query = [], $dataProviderOptions = [])
     {
         $this->owner->unsetAttributes();
         $filters = !empty($_REQUEST[get_class($this->owner)]) ? $_REQUEST[get_class($this->owner)] : [];
         $auto = [];
         $colSchema = $this->owner->tableSchema->columns;
-        foreach ($filters as $col=>$val) {
-            if (!$val)
+        foreach ($filters as $col => $val) {
+            if (!$val) {
                 continue;
+            }
+
             if (in_array($col, $this->owner->safeAttributeNames) && !property_exists($this->owner, $col)) {
                 $val = $this->owner->{$col};
-                if ($val!==null) {
+                if ($val !== null) {
                     $desc = isset($colSchema[$col]) ? $colSchema[$col] : null;//integer, boolean, double, string
                     $colType = $desc ? $desc->type : 'string';
                     $temp = ElasticQueryHelper::compare($col, $val, $colType, true);
@@ -91,7 +94,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                         $auto[] = $temp;
                     }
                 }
-            } else if (strchr($col, '.')!==false) {
+            } elseif (strchr($col, '.') !== false) {
                 $temp = ElasticQueryHelper::nestedCompare($col, $val, 'string', false);
                 if ($temp) {
                     $auto[] = $temp;
@@ -101,8 +104,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 
         if (!empty($auto)) {
             $auto = [
-                'bool'=>[
-                    'must'=>$auto,
+                'bool' => [
+                    'must' => $auto,
                 ],
             ];
         }
@@ -124,7 +127,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                 ], $query),
             ], $dataProviderOptions);
         } else {
-            $options = CMap::mergeArray(['criteria'=>$query], $dataProviderOptions);
+            $options = CMap::mergeArray(['criteria' => $query], $dataProviderOptions);
         }
         if (empty($options['criteria']['query']) && isset($options['criteria']['query'])) {
             unset($options['criteria']['query']);
@@ -153,8 +156,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElastica()
     {
-        !$this->_elastica && $this->_elastica = Yii::app()->elastica;
-        return $this->_elastica;
+        !$this->elastica && $this->elastica = Yii::app()->elastica;
+        return $this->elastica;
     }
 
     /**
@@ -171,7 +174,9 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public function getElasticIndex()
     {
         $ret = $this->getElasticDbConnection()->getIndex($this->elasticIndexName);
-        if (!$ret->exists()) $this->createElasticIndex($ret);
+        if (!$ret->exists()) {
+            $this->createElasticIndex($ret);
+        }
         return $ret;
     }
 
@@ -181,7 +186,9 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public function getElasticType()
     {
         $ret = $this->getElasticIndex()->getType($this->elasticTypeName);
-        if (!$ret->exists()) $this->createElasticType($ret);
+        if (!$ret->exists()) {
+            $this->createElasticType($ret);
+        }
         return $ret;
     }
 
@@ -196,19 +203,19 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     /**
      * @param CActiveRecord $m
      */
-    public function queueElasticDocument($m=null)
+    public function queueElasticDocument($m = null)
     {
-        $m===null && $m = $this->owner;
+        $m === null && $m = $this->owner;
         $this->getElastica()->enQueue(get_class($this->owner));
-        $this->_elastic_documents_queue[] = new \Elastica\Document($m->primaryKey, $this->createElasticDocument($m));
+        $this->elastic_documents_queue[] = new \Elastica\Document($m->primaryKey, $this->createElasticDocument($m));
     }
 
     /**
      * @param CActiveRecord $m
      */
-    public function indexElasticDocument($m=null)
+    public function indexElasticDocument($m = null)
     {
-        $m===null && $m = $this->owner;
+        $m === null && $m = $this->owner;
         $this->queueElasticDocument($m);
         $this->addQueueToElastic(1);
         $this->refreshElasticIndex();
@@ -218,12 +225,12 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      * add the documents we have queued so far to elasticsearch
      * @param null $required
      */
-    public function addQueueToElastic($required=null)
+    public function addQueueToElastic($required = null)
     {
-        $required===null && $required = $this->_elastic_bulk_size;
-        if (count($this->_elastic_documents_queue) && count($this->_elastic_documents_queue)>=$required) {
-            $this->getElasticType()->addDocuments($this->_elastic_documents_queue);
-            $this->_elastic_documents_queue = [];
+        $required === null && $required = $this->elastic_bulk_size;
+        if (count($this->elastic_documents_queue) && count($this->elastic_documents_queue) >= $required) {
+            $this->getElasticType()->addDocuments($this->elastic_documents_queue);
+            $this->elastic_documents_queue = [];
         }
     }
 
@@ -236,12 +243,17 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      * @param bool $resetIndex
      * @throws CDbException
      */
-    public function elasticRebuild($perPage=10000, $limit=null, $criteria=[], $resetType=false, $resetIndex=false)
-    {
+    public function elasticRebuild(
+        $perPage = 10000,
+        $limit = null,
+        $criteria = [],
+        $resetType = false,
+        $resetIndex = false
+    ) {
         $index = $this->getElasticIndex();
         if ($resetIndex) {
             $this->createElasticIndex($index);
-        } else if ($resetType) {
+        } elseif ($resetType) {
             $this->createElasticType(null, true);
         }
 
@@ -249,7 +261,13 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         $id = 0;
         $with = $this->buildRelationsWithCriteria();
         do {
-            $temp = new CDbCriteria(['with'=>$with, 'together'=>true, 'limit'=>$perPage, 'order'=>'t.id desc', 'condition'=>($id?"t.id<={$id}":'')]);
+            $temp = new CDbCriteria([
+                'with' => $with,
+                'together' => true,
+                'limit' => $perPage,
+                'order' => 't.id desc',
+                'condition' => ($id ? "t.id<={$id}" : '')
+            ]);
             $temp->mergeWith($criteria);
 
             /** @var CActiveRecord[] $models */
@@ -263,21 +281,21 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             }
             $transaction->commit();
             $i = $i + $perPage;
-        } while (count($models)>1 && (!$limit || ($limit && $i<$limit)));
+        } while (count($models) > 1 && (!$limit || ($limit && $i < $limit)));
 
         $this->addQueueToElastic(1);
         $this->refreshElasticIndex();
     }
 
-    public function buildRelationsWithCriteria($relations=null, $i=0)
+    public function buildRelationsWithCriteria($relations = null, $i = 0)
     {
-        $relations===null && $relations = $this->elasticRelationsToArray($this->elasticRelations);
+        $relations === null && $relations = $this->elasticRelationsToArray($this->elasticRelations);
         $ret = [];
 
-        foreach ($relations as $k=>$v) {
-            $ret[$k] = ['alias'=>"rel{$i}"];
+        foreach ($relations as $k => $v) {
+            $ret[$k] = ['alias' => "rel{$i}"];
             if (!empty($v)) {
-                $ret[$k] = CMap::mergeArray($ret[$k], ['with'=>$this->buildRelationsWithCriteria($v, $i*100)]);
+                $ret[$k] = CMap::mergeArray($ret[$k], ['with' => $this->buildRelationsWithCriteria($v, $i * 100)]);
             }
             $i++;
         }
@@ -323,7 +341,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      * @param \Elastica\Type $type
      * @param bool $reset
      */
-    public function createElasticType($type=null, $reset=false)
+    public function createElasticType($type = null, $reset = false)
     {
         if (method_exists($this->owner, 'createElasticType')) {
             $this->owner->createElasticType($type, $reset);
@@ -355,7 +373,9 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             $matches = [];
             preg_match('#^([^.]+)\.?(.*)#', $relation, $matches);
             $ret[$matches[1]] = !empty($ret[$matches[1]]) ? $ret[$matches[1]] : [];
-            $ret[$matches[1]] = !empty($matches[2]) ? CMap::mergeArray($ret[$matches[1]], $this->elasticRelationsToArray($matches[2])) : [];
+            $ret[$matches[1]] = !empty($matches[2])
+                ? CMap::mergeArray($ret[$matches[1]], $this->elasticRelationsToArray($matches[2]))
+                : [];
         }
         return $ret;
     }
@@ -365,10 +385,12 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      * @param array $nestedRelations
      * @return array
      */
-    public function elasticProperties($m=null, $nestedRelations=null)
+    public function elasticProperties($m = null, $nestedRelations = null)
     {
-        $m===null && $m = $this->owner;
-        $nestedRelations===null && $nestedRelations = !empty($this->elasticRelations) ? $this->elasticRelationsToArray($this->elasticRelations) : [];
+        $m === null && $m = $this->owner;
+        $nestedRelations === null && $nestedRelations = !empty($this->elasticRelations)
+            ? $this->elasticRelationsToArray($this->elasticRelations)
+            : [];
 
         $properties = [];
         foreach ($m->tableSchema->columns as $col => $desc) {//integer, boolean, double, string
@@ -377,24 +399,31 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                 case 'boolean':
                 case 'integer':
                 case 'double':
-                    $properties[$col] = ['type'=>$colType,  'null_value'=>0, 'include_in_all'=>true];
+                    $properties[$col] = ['type' => $colType, 'null_value' => 0, 'include_in_all' => true];
                     break;
                 default:
-                    if ($colType=='string' && preg_match('#_at$#', $col)) {
-                        $properties[$col] = ['type'=>'date', 'null_value'=>'', 'include_in_all'=>true, 'format'=>'YYYY-MM-dd HH:mm:ss||YYYY-MM-dd||epoch_second'];
+                    if ($colType == 'string' && preg_match('#_at$#', $col)) {
+                        $properties[$col] = [
+                            'type' => 'date',
+                            'null_value' => '',
+                            'include_in_all' => true,
+                            'format' => 'YYYY-MM-dd HH:mm:ss||YYYY-MM-dd||epoch_second',
+                        ];
                     } else {
-                        $properties[$col] = ['type'=>$colType,  'null_value'=>'', 'include_in_all'=>true];
+                        $properties[$col] = ['type' => $colType, 'null_value' => '', 'include_in_all' => true];
                     }
                     if (in_array($col, $this->elasticRawCols)) {
-                        $properties[$col]['fields'] = ['raw' => ['type'=>'string', 'index'=>'not_analyzed']];
+                        $properties[$col]['fields'] = ['raw' => ['type' => 'string', 'index' => 'not_analyzed']];
                     }
             }
         }
 
         if (!empty($nestedRelations)) {
             $mRelations = $m->relations();
-            foreach ($nestedRelations as $relation=>$childNestedRelations) {
-                if (empty($mRelations[$relation])) continue;
+            foreach ($nestedRelations as $relation => $childNestedRelations) {
+                if (empty($mRelations[$relation])) {
+                    continue;
+                }
 
                 $relationModel = new $mRelations[$relation][1];
                 $properties[$relation] = [
@@ -412,10 +441,12 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      * @param array $nestedRelations
      * @return array
      */
-    public function createElasticDocument($m=null, $nestedRelations=null)
+    public function createElasticDocument($m = null, $nestedRelations = null)
     {
-        $m===null && $m = $this->owner;
-        $nestedRelations===null && $nestedRelations = !empty($this->elasticRelations) ? $this->elasticRelationsToArray($this->elasticRelations) : [];
+        $m === null && $m = $this->owner;
+        $nestedRelations === null && $nestedRelations = !empty($this->elasticRelations)
+            ? $this->elasticRelationsToArray($this->elasticRelations)
+            : [];
 
         $document = [];
         foreach ($m->tableSchema->columns as $col => $desc) {//integer, boolean, double, string
@@ -430,22 +461,22 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                     $document[$col] = (double)$val;
                     break;
                 default:
-                    if ($colType=='string' && preg_match('#_at$#', $col)) {
-                        $document[$col] = strtotime($val)>0 ? strtotime($val) : 0;
+                    if ($colType == 'string' && preg_match('#_at$#', $col)) {
+                        $document[$col] = strtotime($val) > 0 ? strtotime($val) : 0;
                     } else {
                         $document[$col] = $val;
                     }
             }
         }
         if (!empty($nestedRelations)) {
-            foreach ($nestedRelations as $relation=>$childNestedRelations) {
+            foreach ($nestedRelations as $relation => $childNestedRelations) {
                 $related = $m->{$relation};
 
                 if (empty($related)) {
                     continue;
-                } else if ($related instanceof CActiveRecord) {
+                } elseif ($related instanceof CActiveRecord) {
                     $document[$relation] = $this->createElasticDocument($related, $childNestedRelations);
-                } else if (is_array($related)) {
+                } elseif (is_array($related)) {
                     $document[$relation] = [];
                     foreach ($related as $r) {
                         /** @var CActiveRecord $r */
@@ -462,7 +493,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function afterSave($event)
     {
-        if ($this->elastic_update_after_save) {
+        if (empty($this->elastic_update_after_save) || $this->elastic_update_after_save) {
             $this->indexElasticDocument();
         }
         parent::afterSave($event);
@@ -473,11 +504,11 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function afterDelete($event)
     {
-        $this->getElasticIndex()->deleteByQuery([
-            'query'=>[
-                'term'=>[$this->owner->tableSchema->primaryKey => $this->owner->primaryKey],
+        $this->getElasticIndex()->deleteByQuery(new \Elastica\Query([
+            'query' => [
+                'term' => [$this->owner->tableSchema->primaryKey => $this->owner->primaryKey],
             ],
-        ]);
+        ]));
         parent::afterDelete($event);
     }
 }

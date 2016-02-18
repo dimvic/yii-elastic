@@ -1,10 +1,11 @@
 <?php
+
 /**
  * https://github.com/anasAsh/Yii-Elastica
  */
 class Elastica extends CApplicationComponent
 {
-    private $_client;
+    private $client;
 
     public $host;
     public $port;
@@ -17,15 +18,16 @@ class Elastica extends CApplicationComponent
         Yii::app()->attachEventHandler('onEndRequest', [$this, 'commit']);
     }
 
-    public function getClient() {
-        if (!$this->_client) {
+    public function getClient()
+    {
+        if (!$this->client) {
             if ($this->debug) {
-                define('DEBUG',true);
+                define('DEBUG', true);
             }
             if ($this->servers) {
-                $this->_client = new \Elastica\Client([$this->servers]);
-            } else if ($this->host && $this->port) {
-                $this->_client = new \Elastica\Client([
+                $this->client = new \Elastica\Client([$this->servers]);
+            } elseif ($this->host && $this->port) {
+                $this->client = new \Elastica\Client([
                     'host' => $this->host,
                     'port' => $this->port
                 ]);
@@ -34,7 +36,7 @@ class Elastica extends CApplicationComponent
             }
         }
 
-        return $this->_client;
+        return $this->client;
     }
 
     public $queue = [];//which models to commit
@@ -54,4 +56,3 @@ class Elastica extends CApplicationComponent
         }
     }
 }
-
