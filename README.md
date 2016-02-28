@@ -1,11 +1,11 @@
-# elastic-yii
+# yii-elastic
+
+[![Packagist package][ico-packagist]][link-packagist]
+[![License][ico-license]](LICENSE.md)
+
 Set of tools for working with elasticsearch using [ Elastica ](anasAsh/Yii-Elastica) for those stuck with projects in Yii 1.1. Includes a CActiveDataProvider compatible data provider, a CActiveRecord behavior and an elasticsearch query helper.
 
-You might actually enjoy using it, not only because it allows for speedy searches, but also because it enables you to search inside relations with near zero configuration.
-
-## Requirements
-* PHP 5.4+
-* Yii 1.1.16 (Should work with at least 1.1.11+, but not tested)
+Apart for enabling an application for speedy searches, yii-elastic also enables it for searches inside relations with near zero configuration.
 
 ## Features
 * No elasticsearch background required, a very simple installation is all that is needed (you don't even need to manually create an index or type in elasticsearch)
@@ -35,35 +35,24 @@ Feel free to help out to add functionality if you feel like it, I'd be more than
 * ```ElasticDataProvider``` uses elasticsearch to search but what it returns is ```CActiveRecord[]```, NOT an array of elasticsearch documents. It fetches the primary keys for the matched records and in turn queries by primary key in order to return ```CActiveRecord[]``` for maximum compatibility. This can be seen as a drawback or advantage, to me it is a major advantage as I use SQL for persistence, only need elastic for very specific tasks, and prefer to work with ```CActiveRecord``` instances which other Yii 1.1 widgets/extensions/components/plugins like the most.
 * Searching on relation fields currently only works for a full match ("imba" will not match "imbalanced" as you might expect)
 
-## Todo
-* Add ```$model->relations()``` to index by default
-* ElasticaQueryHelper::compare() dates support
-* Create a schema cache for the relational fields, as they will always be searched for exact matches ATM
-* Support aggregations for model and relation fields
-* Support Elastica installation in folder other than ```elastic-yii/Elastica```
-* Documentation
-
 ## Installation
 
-1. Clone this repository into ```extensions/```
-2. Run ```git submodule update --init --recursive``` in ```extensions/elastic-yii```
-3. Add to your configuration:
+```
+$ composer config repositories.yii-elastic git https://github.com/dimvic/yii-elastic
+$ composer require dimvic/yii-elastic:dev-master
+$ composer update
+```
+
+Then Add to your configuration:
 ```php
 return [
-	'preload' => [
-		'elasticaLoader',
-		...
-	],
 	...
 	'components' => [
 		'elastica' => [
-			'class' => 'extensions.elastic-yii.Elastica',
+			'class' => 'extensions.yii-elastic.Elastica',
 			'host' => '127.0.0.1',
 			'port' => '9200',
 			'debug' => YII_DEBUG,
-		],
-		'elasticaLoader' => [
-			'class' => 'ext.elastic-yii.ElasticaLoader',
 		],
 		...
 	],
@@ -82,7 +71,7 @@ class Post extends CActiveRecord
 	{
 		return array_replace(parent::behaviors(), [
             [
-                'class'=>'ext.elastic-yii.ElasticActiveRecordBehavior',
+                'class'=>'ext.yii-elastic.ElasticActiveRecordBehavior',
                 'elastic_index'=>null,   //defaults to parsing db name from $this->getDbConnection()
                 'elastic_type'=>null,    //defaults to $model->tableName()
                 'elastic_raw_cols'=>null,//the columns that will be used for aggregations, defaults to ['caption', 'slug', 'label', 'name']
@@ -161,14 +150,19 @@ You will probably want to have a look at:
 * ```ElasticQueryHelper```, where you can get an idea of how queries are build and how to supplement existing ones with something more fancy.
 Playing with the parameters of the methods should be enough for most cases, overloading is always an option.
 
-Also, ```ElasticActiveDataProvider->getResultSet()``` will give you access to the ```\Elastica\ResultSet``` for every query, in case you need more insight on the search you perform.
-
-@todo add usage tips
-
-## Methods Overview
-
-@todo add methods overview
+```ElasticActiveDataProvider->getResultSet()``` will give you access to the ```\Elastica\ResultSet``` for every query, in case you need more insight on the search you perform.
 
 ## Thanks
-* [ ruflin/Elastica ](https://github.com/ruflin/Elastica)
-* [ anasAsh/Yii-Elastica ](https://github.com/anasAsh/Yii-Elastica)
+* [ruflin/Elastica](https://github.com/ruflin/Elastica)
+* [anasAsh/Yii-Elastica](https://github.com/anasAsh/Yii-Elastica)
+
+## Todo
+* Add ```$model->relations()``` to index by default
+* ElasticaQueryHelper::compare() dates support
+* Create a schema cache for the relational fields, as they will always be searched for exact matches ATM
+* Support aggregations for model and relation fields
+* Documentation
+
+[ico-packagist]: https://img.shields.io/badge/packagist-dev-lightgrey.svg?style=flat-square
+[ico-license]: https://img.shields.io/packagist/l/dimvic/yii-elastic.svg?style=flat-square
+[link-packagist]: https://packagist.org/packages/dimvic/yii-elastic

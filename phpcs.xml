@@ -16,5 +16,4 @@
     <file>ElasticActiveRecordBehavior.php</file>
     <file>ElasticQueryHelper.php</file>
     <file>Elastica.php</file>
-    <file>ElasticaLoader.php</file>
 </ruleset>

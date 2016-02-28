@@ -1,5 +1,5 @@
 {
-    "name": "dimvic/elastic-yii",
+    "name": "dimvic/yii-elastic",
     "description": "Yii 1.1 elasticsearch tools",
     "type": "yii-extension",
     "keywords": ["Yii", " elasticsearch"],
@@ -11,11 +11,12 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/dimvic/elastic-yii/issues",
-        "source": "https://github.com/dimvic/elastic-yii"
+        "issues": "https://github.com/dimvic/yii-elastic/issues",
+        "source": "https://github.com/dimvic/yii-elastic"
     },
     "require": {
         "dimvic/composer-installers": "^0.1",
+        "ruflin/Elastica": "dev-master",
         "php":"^5.4.0"
     },
     "suggest": {
