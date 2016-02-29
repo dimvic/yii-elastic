@@ -461,6 +461,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                     $document[$col] = (double)$val;
                     break;
                 default:
+                    $val = mb_strtolower($val);
                     if ($colType == 'string' && preg_match('#_at$#', $col)) {
                         $document[$col] = strtotime($val) > 0 ? strtotime($val) : 0;
                     } else {

@@ -44,15 +44,16 @@ class ElasticActiveDataProvider extends CActiveDataProvider
             $sort = $criteria['order'];
             unset($criteria['order']);
         }
-        $query = new Elastica\Query($criteria);
         if (!$count) {
+            $opts['sort'] = $sort;
             if (($pagination = $this->getPagination()) !== false) {
                 $pagination->setItemCount($this->getTotalItemCount());
-                $query->setFrom($pagination->getOffset());
-                $query->setSize($pagination->getLimit());
+                $pagination->getOffset() && $opts['from'] = $pagination->getOffset();
+                $pagination->getLimit() && $opts['size'] = $pagination->getLimit();
             }
-            $query->setSort($sort);
+            $criteria = $opts + $criteria;
         }
+        $query = new Elastica\Query($criteria);
         return $query;
     }
 
@@ -107,7 +108,8 @@ class ElasticActiveDataProvider extends CActiveDataProvider
         $implodedKeys = implode(',', $keys);
         $criteria = new CDbCriteria([
             'condition' => "{$pkAlias} in ($implodedKeys)",
-            'order' => "field({$pkAlias},{$implodedKeys})",
+            'order' => "field({$pkAlias}, {$implodedKeys})",
+            'limit' => 5000,
         ]);
         !empty($this->model->elastic_findcriteria) && $criteria->mergeWith($this->model->elastic_findcriteria);
         return empty($keys) ? [] : $this->model->findAll($criteria);
@@ -131,7 +133,7 @@ class ElasticActiveDataProvider extends CActiveDataProvider
      */
     protected function calculateTotalItemCount()
     {
-        return $this->getResultSet(true)->getTotalHits() > 5000 ? 5000 : $this->getResultSet(true)->getTotalHits();
+        return $this->getResultSet(true)->getTotalHits();
     }
 
     /**
