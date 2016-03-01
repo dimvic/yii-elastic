@@ -99,10 +99,10 @@ class ElasticQueryHelper
      * @param $column
      * @param $value
      * @param float $boost
-     * @param integer $fuzziness
+     * @param integer|string $fuzziness
      * @return array|bool
      */
-    public static function fuzzy($column, $value, $boost = null, $fuzziness = 5)
+    public static function fuzzy($column, $value, $boost = null, $fuzziness = 'auto')
     {
         $rawRegEx = '/\.(' . implode(self::$raw_cols, '|') . ')$/';
         $raw = '';
@@ -145,10 +145,10 @@ class ElasticQueryHelper
      * @param $column
      * @param $value
      * @param float $boost
-     * @param integer $fuzziness
+     * @param integer|string $fuzziness
      * @return array|bool
      */
-    public static function nestedFuzzy($column, $value, $boost = null, $fuzziness = 5)
+    public static function nestedFuzzy($column, $value, $boost = null, $fuzziness = 'auto')
     {
         $matches = [];
         preg_match('#^(.*)\.(\w+)$#', $column, $matches);
@@ -159,15 +159,9 @@ class ElasticQueryHelper
         }
         self::$is_nested_prepared = true;
         return [
-            'bool' => [
-                'must' => [
-                    'nested' => [
-                        'path' => $matches[1],
-                        'query' => [
-                            self::fuzzy($column, $value, $boost, $fuzziness)
-                        ],
-                    ],
-                ],
+            'nested' => [
+                'path' => $matches[1],
+                'query' => self::fuzzy($column, $value, $boost, $fuzziness)
             ],
         ];
     }

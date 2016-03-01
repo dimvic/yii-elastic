@@ -17,7 +17,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 
     public $elastic_index;
     public $elastic_type;
-    public $elastic_raw_cols;
+    public $elastic_raw_cols = ['caption', 'slug', 'label', 'name'];
     public $elastic_relations = [];
     public $elastica;
     public $elastic_documents_queue = [];
@@ -28,9 +28,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticIndexName()
     {
-        $indexName = $this->elastic_index
+        return $this->owner->elastic_index
             ?: preg_replace('#^.*;.*?name=(\w+).*$#', '$1', Yii::app()->db->connectionString);
-        return $indexName;
     }
 
     /**
@@ -38,8 +37,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticTypeName()
     {
-        $typeName = $this->elastic_type ?: $this->owner->tableName();
-        return $typeName;
+        return $this->owner->elastic_type ?: $this->owner->tableName();
     }
 
     /**
@@ -47,7 +45,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticRawCols()
     {
-        return $this->elastic_raw_cols ?: ['caption', 'slug', 'label', 'name'];
+        return $this->owner->elastic_raw_cols ?: $this->elastic_raw_cols;
     }
 
     /**
@@ -55,7 +53,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticRelations()
     {
-        return $this->elastic_relations ?: [];
+        return $this->owner->elastic_relations ?: $this->elastic_relations;
     }
 
     /**
@@ -87,6 +85,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             if (in_array($col, $this->owner->safeAttributeNames) && !property_exists($this->owner, $col)) {
                 $val = $this->owner->{$col};
                 if ($val !== null) {
+                    /** @var CMysqlColumnSchema $desc */
                     $desc = isset($colSchema[$col]) ? $colSchema[$col] : null;//integer, boolean, double, string
                     $colType = $desc ? $desc->type : 'string';
                     $temp = ElasticQueryHelper::compare($col, $val, $colType, true);
