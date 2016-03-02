@@ -80,14 +80,10 @@ class ElasticQueryHelper
         }
         self::$is_nested_prepared = true;
         return [
-            'bool' => [
-                'must' => [
-                    'nested' => [
-                        'path' => $matches[1],
-                        'query' => [
-                            self::compare($column, $value, $type, $partialMatch, $boost)
-                        ],
-                    ],
+            'nested' => [
+                'path' => $matches[1],
+                'query' => [
+                    self::compare($column, $value, $type, $partialMatch, $boost)
                 ],
             ],
         ];
@@ -203,7 +199,7 @@ class ElasticQueryHelper
                     ]
                 ];
             }
-            return $not ? ['bool' => ['must_not' => $query]] : ['bool' => ['must' => $query]];
+            return $not ? ['bool' => ['must_not' => $query]] : [$query];
         } else {
             return self::buildCondition($col, $val, $not ? '!=' : '=', $boost);
         }
