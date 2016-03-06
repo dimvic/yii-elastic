@@ -493,7 +493,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function afterSave($event)
     {
-        if (empty($this->elastic_update_after_save) || $this->elastic_update_after_save) {
+        if (empty($this->owner->elastic_update_after_save) || $this->owner->elastic_update_after_save) {
             $this->indexElasticDocument();
         }
         parent::afterSave($event);
