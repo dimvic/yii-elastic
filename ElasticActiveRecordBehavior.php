@@ -172,7 +172,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function getElasticIndex()
     {
-        $ret = $this->getElasticDbConnection()->getIndex($this->elasticIndexName);
+        $ret = $this->getElasticDbConnection()->getIndex($this->getElasticIndexName());
         if (!$ret->exists()) {
             $this->createElasticIndex($ret);
         }
@@ -251,6 +251,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     ) {
         $index = $this->getElasticIndex();
         if ($resetIndex) {
+            $this->getElasticIndex()->delete();
             $this->createElasticIndex($index);
         } elseif ($resetType) {
             $this->createElasticType(null, true);
@@ -320,16 +321,15 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 //                    'indexAnalyzer' => [
 //                        'type' => 'snowball',
 //                        'filter' => ['lowercase'],
-////                        'language' => 'English',
+//                        'language' => 'English',
 //                    ],
 //                    'searchAnalyzer' => [
 //                        'type' => 'snowball',
 //                        'filter' => ['lowercase'],
-////                        'language' => 'English',
-//
-////                        'type' => 'custom',
-////                        'tokenizer' => 'standard',
-////                        'filter' => ['standard', 'lowercase'],
+//                        'language' => 'English',
+//                        'type' => 'custom',
+//                        'tokenizer' => 'standard',
+//                        'filter' => ['standard', 'lowercase'],
 //                    ]
 //                ],
 //            ]
@@ -358,8 +358,6 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             ->setType($type)
             ->setProperties($this->elasticProperties())
             ->setParam('dynamic', 'strict')
-//            ->setParam('index_analyzer', 'indexAnalyzer')
-//            ->setParam('search_analyzer', 'searchAnalyzer')
             ->send();
     }
 
