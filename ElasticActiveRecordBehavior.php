@@ -24,6 +24,11 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
     public $elastic_bulk_size = 1000;
 
     /**
+     * @var callable
+     */
+    public $elastic_transliterate = null;
+
+    /**
      * @return string
      */
     public function getElasticIndexName()
@@ -458,7 +463,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                     $document[$col] = (double)$val;
                     break;
                 default:
-                    $val = mb_strtolower($val);
+                    $transliterator = $this->elastic_transliterate ? [$this, 'elastic_transliterate'] : 'mb_strtolower';
+                    $val = call_user_func_array($transliterator, [$val]);
                     if ($colType == 'string' && preg_match('#_at$#', $col)) {
                         $document[$col] = strtotime($val) > 0 ? strtotime($val) : 0;
                     } else {
