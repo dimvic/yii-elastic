@@ -382,6 +382,31 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         return $ret;
     }
 
+    public function elasticProperty(&$properties, $col, $colType)
+    {
+        switch ($colType) {
+            case 'boolean':
+            case 'integer':
+            case 'double':
+                $properties[$col] = ['type' => $colType, 'null_value' => 0, 'include_in_all' => true];
+                break;
+            default:
+                if ($colType == 'string' && preg_match('#_at$#', $col)) {
+                    $properties[$col] = [
+                        'type' => 'date',
+                        'null_value' => '',
+                        'include_in_all' => true,
+                        'format' => 'YYYY-MM-dd HH:mm:ss||YYYY-MM-dd||epoch_second',
+                    ];
+                } else {
+                    $properties[$col] = ['type' => $colType, 'null_value' => '', 'include_in_all' => true];
+                }
+                if (in_array($col, $this->elasticRawCols)) {
+                    $properties[$col]['fields'] = ['raw' => ['type' => 'string', 'index' => 'not_analyzed']];
+                }
+        }
+    }
+
     /**
      * @param CActiveRecord $m
      * @param array $nestedRelations
@@ -396,28 +421,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 
         $properties = [];
         foreach ($m->tableSchema->columns as $col => $desc) {//integer, boolean, double, string
-            $colType = $desc->type;
-            switch ($colType) {
-                case 'boolean':
-                case 'integer':
-                case 'double':
-                    $properties[$col] = ['type' => $colType, 'null_value' => 0, 'include_in_all' => true];
-                    break;
-                default:
-                    if ($colType == 'string' && preg_match('#_at$#', $col)) {
-                        $properties[$col] = [
-                            'type' => 'date',
-                            'null_value' => '',
-                            'include_in_all' => true,
-                            'format' => 'YYYY-MM-dd HH:mm:ss||YYYY-MM-dd||epoch_second',
-                        ];
-                    } else {
-                        $properties[$col] = ['type' => $colType, 'null_value' => '', 'include_in_all' => true];
-                    }
-                    if (in_array($col, $this->elasticRawCols)) {
-                        $properties[$col]['fields'] = ['raw' => ['type' => 'string', 'index' => 'not_analyzed']];
-                    }
-            }
+            $this->elasticProperty($properties, $col, $desc->type);
         }
 
         if (!empty($nestedRelations)) {
@@ -428,11 +432,15 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                 }
 
                 $relationModel = new $mRelations[$relation][1];
-                $properties[$relation] = [
-                    'type' => 'nested',
-                    'include_in_parent' => false,
-                    'properties' => $this->elasticProperties($relationModel, $childNestedRelations),
-                ];
+                if ($mRelations[$relation][0]==CActiveRecord::STAT) {
+                    $this->elasticProperty($properties, $relation, 'double');
+                } else {
+                    $properties[$relation] = [
+                        'type' => 'nested',
+                        'include_in_parent' => false,
+                        'properties' => $this->elasticProperties($relationModel, $childNestedRelations),
+                    ];
+                }
             }
         }
         return $properties;
@@ -476,9 +484,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             foreach ($nestedRelations as $relation => $childNestedRelations) {
                 $related = $m->{$relation};
 
-                if (empty($related)) {
-                    continue;
-                } elseif ($related instanceof CActiveRecord) {
+                if ($related instanceof CActiveRecord) {
                     $document[$relation] = $this->createElasticDocument($related, $childNestedRelations);
                 } elseif (is_array($related)) {
                     $document[$relation] = [];
@@ -486,6 +492,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                         /** @var CActiveRecord $r */
                         $document[$relation][] = $this->createElasticDocument($r, $childNestedRelations);
                     }
+                } else if ($m->relations()[$relation][0]==CActiveRecord::STAT) {//STAT relation
+                    $document[$relation] = $m->{$relation} ?: 0;
                 }
             }
         }
