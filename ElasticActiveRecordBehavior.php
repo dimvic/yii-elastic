@@ -265,26 +265,29 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         $i = 0;
         $id = 0;
         $with = $this->buildRelationsWithCriteria();
+
         do {
             $temp = new CDbCriteria([
                 'with' => $with,
                 'together' => true,
                 'limit' => $perPage,
                 'order' => 't.id desc',
-                'condition' => ($id ? "t.id<={$id}" : '')
+                'condition' => ($id ? "t.id<={$id}" : ''),
             ]);
             $temp->mergeWith($criteria);
 
             /** @var CActiveRecord[] $models */
             $models = $this->owner->findAll($temp);
 
-            $transaction = $this->owner->getDbConnection()->beginTransaction();
+            $dbConnection = $this->owner->getDbConnection();
+            $transaction = $dbConnection->currentTransaction ? null : $dbConnection->beginTransaction();
+
             foreach ($models as $model) {
                 $this->queueElasticDocument($model);
-                $this->addQueueToElastic();
                 $id = $model->id;
             }
-            $transaction->commit();
+            $transaction && $transaction->commit();
+
             $i = $i + $perPage;
         } while (count($models) > 1 && (!$limit || ($limit && $i < $limit)));
 
