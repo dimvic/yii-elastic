@@ -324,23 +324,15 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         $index->create([
             'number_of_shards' => 4,
             'number_of_replicas' => 1,
-//            'analysis' => [
-//                'analyzer' => [
-//                    'indexAnalyzer' => [
-//                        'type' => 'snowball',
-//                        'filter' => ['lowercase'],
-//                        'language' => 'English',
-//                    ],
-//                    'searchAnalyzer' => [
-//                        'type' => 'snowball',
-//                        'filter' => ['lowercase'],
-//                        'language' => 'English',
-//                        'type' => 'custom',
-//                        'tokenizer' => 'standard',
-//                        'filter' => ['standard', 'lowercase'],
-//                    ]
-//                ],
-//            ]
+            'analysis' => [
+                'analyzer' => [
+                    'standard' => [
+                        'type' => 'standard',
+                        'tokenizer' => 'standard',
+                        'filter' => ['standard', 'lowercase'],
+                    ],
+                ],
+            ]
         ], true);
     }
 
@@ -474,8 +466,10 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
                     $document[$col] = (double)$val;
                     break;
                 default:
-                    $transliterator = $this->elastic_transliterate ? [$this, 'elastic_transliterate'] : 'mb_strtolower';
-                    $val = call_user_func_array($transliterator, [$val]);
+                    $transliterator = $this->elastic_transliterate ? [$this, 'elastic_transliterate'] : null;
+                    if ($transliterator) {
+                        $val = call_user_func_array($transliterator, [$val]);
+                    }
                     if ($colType == 'string' && preg_match('#_at$#', $col)) {
                         $document[$col] = strtotime($val) > 0 ? strtotime($val) : 0;
                     } else {
