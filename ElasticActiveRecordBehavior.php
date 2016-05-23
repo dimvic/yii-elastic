@@ -460,21 +460,24 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             switch ($colType) {
                 case 'boolean':
                 case 'integer':
-                    $document[$col] = (int)$val;
+                $val!==null && $val = (int)$val;
                     break;
                 case 'double':
-                    $document[$col] = (double)$val;
+                    $val!==null && $val = (double)$val;
                     break;
                 default:
-                    $transliterator = $this->elastic_transliterate ? [$this, 'elastic_transliterate'] : null;
-                    if ($transliterator) {
-                        $val = call_user_func_array($transliterator, [$val]);
+                    if ($val!==null) {
+                        $transliterator = $this->elastic_transliterate ? [$this, 'elastic_transliterate'] : null;
+                        if ($transliterator) {
+                            $val = call_user_func_array($transliterator, [$val]);
+                        }
+                        if ($colType == 'string' && preg_match('#_at$#', $col)) {
+                            $val = strtotime($val) > 0 ? strtotime($val) : 0;
+                        }
                     }
-                    if ($colType == 'string' && preg_match('#_at$#', $col)) {
-                        $document[$col] = strtotime($val) > 0 ? strtotime($val) : 0;
-                    } else {
-                        $document[$col] = $val;
-                    }
+            }
+            if ($val!==null) {
+                $document[$col] = $val;
             }
         }
         if (!empty($nestedRelations)) {
