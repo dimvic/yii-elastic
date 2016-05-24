@@ -500,12 +500,18 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         return $document;
     }
 
+    public function elasticDelete()
+    {
+        $this->getElasticType()->deleteByid($this->owner->id);
+    }
+
     /**
      * @param CEvent $event
      */
     public function afterSave($event)
     {
         if (empty($this->owner->elastic_update_after_save) || $this->owner->elastic_update_after_save) {
+            $this->elasticDelete();
             $this->indexElasticDocument();
         }
         parent::afterSave($event);
