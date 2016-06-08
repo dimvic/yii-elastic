@@ -502,7 +502,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 
     public function elasticDelete()
     {
-        $this->getElasticType()->deleteByid($this->owner->id);
+        $this->getElasticIndex()->deleteByQuery(new \Elastica\Query\Term([$this->owner->tableSchema->primaryKey=>$this->owner->primaryKey]));
+//        $this->getElasticType()->deleteByQuery($this->owner->id);
     }
 
     /**
@@ -522,7 +523,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function afterDelete($event)
     {
-        $this->getElasticIndex()->deleteByQuery(new \Elastica\Query\Match($this->owner->tableSchema->primaryKey, $this->owner->primaryKey));
+        $this->elasticDelete();
         parent::afterDelete($event);
     }
 }
