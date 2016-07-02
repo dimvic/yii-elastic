@@ -448,6 +448,9 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
      */
     public function createElasticDocument($m = null, $nestedRelations = null)
     {
+        if (method_exists($this->owner, 'createElasticDocument')) {
+            return $this->owner->createElasticDocument($m, $nestedRelations);
+        }
         $m === null && $m = $this->owner;
         $nestedRelations === null && $nestedRelations = !empty($this->elasticRelations)
             ? $this->elasticRelationsToArray($this->elasticRelations)
