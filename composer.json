@@ -15,7 +15,7 @@
         "source": "https://github.com/dimvic/yii-elastic"
     },
     "require": {
-        "dimvic/composer-installers": "^0.1",
+        "dimvic/composer-installers": "dev-master",
         "ruflin/Elastica": "3.2.*",
         "php": "^5.4.0|^7.0"
     },
