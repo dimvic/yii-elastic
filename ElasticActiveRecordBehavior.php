@@ -351,7 +351,13 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             $type->delete();
         }
         !$type && $type = $this->getElasticIndex()->getType($this->elasticTypeName);
+    }
 
+    /**
+     * @param \Elastica\Type $type
+     */
+    public function createElasticMapping($type)
+    {
         $mapping = new \Elastica\Type\Mapping();
 
         $mapping
@@ -359,6 +365,8 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
             ->setProperties($this->elasticProperties())
             ->setParam('dynamic', 'strict')
             ->send();
+
+        $this->createElasticMapping($type);
     }
 
     public function elasticRelationsToArray($relations)
