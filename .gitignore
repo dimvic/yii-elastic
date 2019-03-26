@@ -1,2 +1,17 @@
+*.err
+*.log
+*.orig
+*.rej
+*.swo
+*.swp
+*.vi
+*~
+~$*
+
+._*
+.cache
+.DS_Store
+.idea
+
 vendor
 composer.lock
