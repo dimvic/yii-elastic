@@ -17,6 +17,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
 
     public $elastic_index;
     public $elastic_type;
+    public $elastic_mapping_dynamic = 'strict';
     public $elastic_raw_cols = ['caption', 'slug', 'label', 'name'];
     public $elastic_relations = [];
     public $elastica;
@@ -363,7 +364,7 @@ class ElasticActiveRecordBehavior extends CActiveRecordBehavior
         $mapping
             ->setType($type)
             ->setProperties($this->elasticProperties())
-            ->setParam('dynamic', 'strict')
+            ->setParam('dynamic', $this->elastic_mapping_dynamic)
             ->send();
 
         $this->createElasticMapping($type);
