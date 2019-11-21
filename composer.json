@@ -6,8 +6,8 @@
     "license": "MIT",
     "authors": [
         {
-            "name":"Dimitris Vichos",
-            "email":"dimitris@unhooked.gr"
+            "name": "Dimitris Vichos",
+            "email": "dimitris@unhooked.gr"
         }
     ],
     "support": {
@@ -16,8 +16,11 @@
     },
     "require": {
         "dimvic/composer-installers": "dev-master",
-        "ruflin/Elastica": "3.2.*",
+        "ruflin/elastica": "3.2.*",
         "php": "^5.4.0|^7.0"
+    },
+    "require-dev": {
+        "roave/security-advisories": "dev-master"
     },
     "suggest": {
         "yiisoft/yii": "^1.1.17"
